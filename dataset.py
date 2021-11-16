@@ -18,7 +18,11 @@ class Dataset(Dataset):
         self.transform = transform
 
         self.images = sorted(glob(os.path.join(imgs_dir, '*.jpg')))
-        self.masks = sorted(glob(os.path.join(mask_dir, '*.jpg')))
+
+        files = []
+        for ext in ('*.gif', '*.png', '*.jpg'):
+            files.extend(glob(os.path.join(mask_dir, ext)))
+        self.masks = sorted(files)
 
     def __len__(self):
         return len(self.masks)
