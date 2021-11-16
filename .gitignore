@@ -1,0 +1,8 @@
+/accida_segmentation
+/test.py
+.ipynb_checkpoints/
+__pycache__/
+checkpoints1/
+test_results_dir/
+checkpoints_dir/
+socar_clustering/
