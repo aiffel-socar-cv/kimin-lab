@@ -158,7 +158,7 @@ class EfficientNet(nn.Module):
                 def n_channels(self):
                     n_channels_dict = {'efficientnet-b0': 1280, 'efficientnet-b1': 1280, 'efficientnet-b2': 1408,
                                        'efficientnet-b3': 1536, 'efficientnet-b4': 1792, 'efficientnet-b5': 2048,
-                                       'efficientnet-b6': 2304, 'efficientnet-b7': 2560}
+                                       'efficientnet-b6': 2304, 'efficientnet-b7': 2560, 'efficientnet-socar-b0': 1280}
                     return n_channels_dict[self.encoder.name]
 
                 def forward(self, x):
@@ -179,7 +179,11 @@ def _get_model_by_name(model_name, classes=1000, pretrained=False):
     model = EfficientNet(block_args_list, global_params)
     try:
         if pretrained:
-            pretrained_state_dict = load_state_dict_from_url(IMAGENET_WEIGHTS[model_name])
+            if model_name != 'efficientnet-socar-b0':
+                pretrained_state_dict = load_state_dict_from_url(IMAGENET_WEIGHTS[model_name])
+            else: 
+                pretrained_state_dict = torch.load(IMAGENET_WEIGHTS[model_name])
+                model._fc = nn.Linear(1280, 4)
 
             if classes != 1000:
                 random_state_dict = model.state_dict()

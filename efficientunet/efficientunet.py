@@ -1,11 +1,11 @@
 from collections import OrderedDict
 from .layers import *
 from .efficientnet import EfficientNet
-
+import os
 
 __all__ = ['EfficientUnet', 'get_efficientunet_b0', 'get_efficientunet_b1', 'get_efficientunet_b2',
            'get_efficientunet_b3', 'get_efficientunet_b4', 'get_efficientunet_b5', 'get_efficientunet_b6',
-           'get_efficientunet_b7']
+           'get_efficientunet_b7', 'get_socar_efficientunet_b0']
 
 
 def get_blocks_to_be_concat(model, x):
@@ -85,7 +85,7 @@ class EfficientUnet(nn.Module):
     def n_channels(self):
         n_channels_dict = {'efficientnet-b0': 1280, 'efficientnet-b1': 1280, 'efficientnet-b2': 1408,
                            'efficientnet-b3': 1536, 'efficientnet-b4': 1792, 'efficientnet-b5': 2048,
-                           'efficientnet-b6': 2304, 'efficientnet-b7': 2560}
+                           'efficientnet-b6': 2304, 'efficientnet-b7': 2560, 'efficientnet-socar-b0': 1280}
         return n_channels_dict[self.encoder.name]
 
     @property
@@ -93,7 +93,8 @@ class EfficientUnet(nn.Module):
         size_dict = {'efficientnet-b0': [592, 296, 152, 80, 35, 32], 'efficientnet-b1': [592, 296, 152, 80, 35, 32],
                      'efficientnet-b2': [600, 304, 152, 80, 35, 32], 'efficientnet-b3': [608, 304, 160, 88, 35, 32],
                      'efficientnet-b4': [624, 312, 160, 88, 35, 32], 'efficientnet-b5': [640, 320, 168, 88, 35, 32],
-                     'efficientnet-b6': [656, 328, 168, 96, 35, 32], 'efficientnet-b7': [672, 336, 176, 96, 35, 32]}
+                     'efficientnet-b6': [656, 328, 168, 96, 35, 32], 'efficientnet-b7': [672, 336, 176, 96, 35, 32],
+                    'efficientnet-socar-b0': [592, 296, 152, 80, 35, 32]}
         return size_dict[self.encoder.name]
 
     def forward(self, x):
@@ -172,5 +173,15 @@ def get_efficientunet_b6(out_channels=2, concat_input=True, pretrained=True):
 
 def get_efficientunet_b7(out_channels=2, concat_input=True, pretrained=True):
     encoder = EfficientNet.encoder('efficientnet-b7', pretrained=pretrained)
+    model = EfficientUnet(encoder, out_channels=out_channels, concat_input=concat_input)
+    return model
+
+def get_efficientunet_b0(out_channels=2, concat_input=True, pretrained=True):
+    encoder = EfficientNet.encoder('efficientnet-b0', pretrained=pretrained)
+    model = EfficientUnet(encoder, out_channels=out_channels, concat_input=concat_input)
+    return model
+
+def get_socar_efficientunet_b0(out_channels=2, concat_input=True, pretrained=True):
+    encoder = EfficientNet.encoder('efficientnet-socar-b0', pretrained=pretrained)
     model = EfficientUnet(encoder, out_channels=out_channels, concat_input=concat_input)
     return model
