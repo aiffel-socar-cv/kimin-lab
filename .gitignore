@@ -6,3 +6,6 @@ checkpoints1/
 test_results_dir/
 checkpoints_dir/
 socar_clustering/
+ssl_dataset/
+wandb/
+concat_dir/
