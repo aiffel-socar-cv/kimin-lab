@@ -23,6 +23,9 @@ IMAGENET_WEIGHTS = {
     'efficientnet-b6': 'https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b6-c76e70fd.pth',
     'efficientnet-b7': 'https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b7-dcc49843.pth',
     'efficientnet-socar-b0' : '/home/pung/repo/kimin-lab/models/pretrained_effb0_orignal_socar_50000.pt',
+    'efficientnet-socar-b1' : '/home/pung/repo/kimin-lab/models/pretrained_effb1_orignal_socar_25.pt',
+    'efficientnet-stanford-b0' : '/home/pung/repo/kimin-lab/models/pretrained_effb0_orignal_stanford_50000.pt',
+    
 }
 
 
@@ -56,6 +59,8 @@ def round_repeats(repeats, global_params):
 def get_efficientnet_params(model_name, override_params=None):
     """Get efficientnet params based on model name
     """
+    model_name = model_name[:15]
+
     params_dict = {
         # (width_coefficient, depth_coefficient, resolution, dropout_rate)
         # Note: the resolution here is just for reference, its values won't be used.
@@ -67,8 +72,8 @@ def get_efficientnet_params(model_name, override_params=None):
         'efficientnet-b5': (1.6, 2.2, 456, 0.4),
         'efficientnet-b6': (1.8, 2.6, 528, 0.5),
         'efficientnet-b7': (2.0, 3.1, 600, 0.5),
-        'efficientnet-socar-b0': (1.0, 1.0, 224, 0.2),
     }
+    
     if model_name not in params_dict.keys():
         raise KeyError('There is no model named {}.'.format(model_name))
 
