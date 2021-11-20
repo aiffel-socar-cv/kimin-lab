@@ -13,12 +13,13 @@ from efficientunet import *
 from dataset import *
 from config import *
 from adabelief_pytorch import AdaBelief
-from metric import FocalLoss
+from losses import FocalLoss, LovaszHingeLoss, DiceLoss
+from unet import UNet
 
 def wandb_setting(sweep_config=None):
     wandb.init(config=sweep_config)
     w_config = wandb.config
-    name_str = 'lr:' +  str(w_config.learning_rate) + '-m:' +  str(w_config.model) 
+    name_str = str(w_config.model) + ' | ' +  str(w_config.loss)  + ' | ' +  str(w_config.learning_rate) 
     wandb.run.name = name_str
 
     #########Random seed 고정해주기###########
@@ -66,11 +67,11 @@ def wandb_setting(sweep_config=None):
     ##########################################데이터 로드 하기#################################################
     batch_size= w_config.batch_size
 
-    train_dataset = Dataset(imgs_dir=TRAIN_IMGS_DIR, mask_dir=TRAIN_LABELS_DIR, transform=train_transform)
+    train_dataset = DatasetV2(imgs_dir=TRAIN_IMGS_DIR, mask_dir=TRAIN_LABELS_DIR, transform=train_transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-    val_dataset = Dataset(imgs_dir=VAL_IMGS_DIR, mask_dir=VAL_LABELS_DIR, transform=val_transform)
+    val_dataset = DatasetV2(imgs_dir=VAL_IMGS_DIR, mask_dir=VAL_LABELS_DIR, transform=val_transform)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
-    test_dataset = Dataset(imgs_dir=TEST_IMGS_DIR, mask_dir=TEST_LABELS_DIR, transform=test_transform)
+    test_dataset = DatasetV2(imgs_dir=TEST_IMGS_DIR, mask_dir=TEST_LABELS_DIR, transform=test_transform)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     #############################################################################################################
@@ -86,20 +87,41 @@ def wandb_setting(sweep_config=None):
     batch_num = {'train': train_batch_num, 'val': val_batch_num}
     dataloaders = {'train': train_loader, 'val': val_loader}
 
-    if w_config.model == 'imagenet-b1':
-        net = get_efficientunet_b1(out_channels=2, concat_input=True, pretrained=True).to(device) 
-    elif w_config.model == 'ssl-b1':
-        net = get_socar_efficientunet_b1(out_channels=2, concat_input=True, pretrained=True).to(device)
-    elif w_config.model == 'imagenet-b0':
-        net = get_efficientunet_b0(out_channels=2, concat_input=True, pretrained=True).to(device)
+    if w_config.model == 'imagenet-b0':
+        net = get_efficientunet_b0(out_channels=2, concat_input=True, pretrained=True).to(device) 
+    elif w_config.model == 'imagenet-b1':
+        net = get_efficientunet_b1(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'imagenet-b2':
+        net = get_efficientunet_b2(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'imagenet-b3':
+        net = get_efficientunet_b3(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'imagenet-b4':
+        net = get_efficientunet_b4(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'imagenet-b5':
+        net = get_efficientunet_b4(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'imagenet-b6':
+        net = get_efficientunet_b4(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'imagenet-b7':
+        net = get_efficientunet_b4(out_channels=2, concat_input=True, pretrained=True).to(device)
+
     elif w_config.model == 'ssl-b0':
         net = get_socar_efficientunet_b0(out_channels=2, concat_input=True, pretrained=True).to(device)
-
+    elif w_config.model == 'ssl-b1':
+        net = get_socar_efficientunet_b1(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'stanford-b0':
+        net = get_stanford_efficientunet_b0(out_channels=2, concat_input=True, pretrained=True).to(device)
+    elif w_config.model == 'orig_unet':
+        net = UNet().to(device)
+    
     # Loss Function
-    if w_config.loss == 'cross_entropy':
-       criterion = nn.CrossEntropyLoss().to(device)
+    if w_config.loss == 'CrossEntropy':
+        criterion = nn.CrossEntropyLoss().to(device)
     elif w_config.loss == 'focal':
-        criterion = FocalLoss().to(device)
+        criterion = FocalLoss(gamma=2, alpha=0.5).to(device)
+    elif w_config.loss == 'LovaszHinge':
+        criterion = LovaszHingeLoss().to(device)
+    elif w_config.loss == 'DiceLoss': 
+        criterion = DiceLoss().to(device)
 
     # Optimizer
     if w_config.optimizer == 'sgd':
@@ -109,15 +131,15 @@ def wandb_setting(sweep_config=None):
     elif w_config.optimizer == 'adabelief':
         optimizer_ft = AdaBelief(net.parameters(), lr=w_config.learning_rate, eps=1e-16, betas=(0.9,0.999), weight_decouple = True, rectify = True)
     
-    ckpt_dir = CKPT_DIR + name_str
-    result_dir = RESULTS_DIR + name_str
+    ckpt_dir = CKPT_DIR + name_str +'scratch'
+    result_dir = RESULTS_DIR + name_str + 'scratch'
 
     wandb.watch(net, log='all') 
     sweep_train.train_model(dataloaders, batch_num, net, criterion, optimizer_ft, ckpt_dir, wandb, num_epoch=w_config.epochs)
     sweep_train.eval_model(test_loader, test_batch_num, net, criterion, optimizer_ft, ckpt_dir, result_dir, wandb)
 
-project_name = 'socar_sweep' # 프로젝트 이름을 설정해주세요.
-entity_name  = 'pebpung' # 사용자의 이름을 설정해주세요.
+project_name = '[Dent_MO] losses' # 프로젝트 이름을 설정해주세요.
+entity_name  = 'viai' # 사용자의 이름을 설정해주세요.
 sweep_id = wandb.sweep(sweep_config, project=project_name, entity=entity_name)
 
-wandb.agent(sweep_id, wandb_setting, count=10)
+wandb.agent(sweep_id, wandb_setting, count=20)
