@@ -47,6 +47,48 @@ class Dataset(Dataset):
         
         return ret
 
+class DatasetV2(Dataset):
+    def __init__(self, imgs_dir, mask_dir, transform=None):
+        self.img_dir = imgs_dir
+        self.mask_dir = mask_dir
+        self.transform = transform
+        self.images = []
+        self.masks  = []
+
+        images_path, masks_path = [], []
+
+        images_path.extend(sorted(glob(os.path.join(imgs_dir, '*.jpg'))))
+
+        for ext in ('*.png', '*.jpg'):
+            masks_path.extend(sorted(glob(os.path.join(mask_dir, ext))))
+        
+        for i, m  in zip(images_path, masks_path):
+            self.images.extend([Image.open(i).convert('RGB')])
+            self.masks.extend([Image.open(m).convert('L')])
+
+    def __len__(self):
+        return len(self.masks)
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+        mask  = self.masks[idx]
+
+        np_image = np.array(image)
+        np_mask  = np.array(mask)
+        
+        if self.transform:
+            transformed = self.transform(image=np_image, mask=np_mask)
+            np_image = transformed["image"]
+            np_mask = transformed["mask"]
+            np_mask = np_mask.long()
+        
+        ret = {
+            'img': np_image,
+            'label': np_mask,
+        }
+        
+        return ret
+
 if __name__ == '__main__':
 
     transform = A.Compose([
