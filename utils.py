@@ -1,7 +1,7 @@
 import os
 import torch
 
-__all__ = ['to_numpy', 'denormalization', 'classify_class', 'save_net', 'load_net']
+__all__ = ['to_numpy', 'denormalization', 'classify_class', 'save_net', 'load_net', 'dirs_check']
 
 def to_numpy(tensor):
     if tensor.ndim == 3:
@@ -11,10 +11,14 @@ def to_numpy(tensor):
 def denormalization(data, mean, std):
     return (data * std) + mean
 
+def dirs_check(dir):    
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
 def classify_class(x):
     return 1.0 * (x > 0.5)
 
-def save_net(ckpt_dir, net, optim, epoch, is_best=False, best_iou=None):
+def save_net(ckpt_dir, net, optim, epoch, is_best=False, best_iou=None, model_name=None):
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
     
@@ -26,7 +30,7 @@ def save_net(ckpt_dir, net, optim, epoch, is_best=False, best_iou=None):
     elif is_best == True:
         torch.save(
             {'net': net.state_dict(),'optim': optim.state_dict()},
-            os.path.join(ckpt_dir, f'best_model_{best_iou:.2f}.pth'),
+            os.path.join(ckpt_dir, f'best_{model_name}_{best_iou:.3f}.pth'),
         )
 
 
@@ -45,4 +49,4 @@ def load_net(ckpt_dir, net, optim):
     optim.load_state_dict(model_dict['optim'])
     epoch = int(''.join(filter(str.isdigit, ckpt_list[-1])))
     
-    return net, optim, epoch
+    return net, optim, ckpt_path
