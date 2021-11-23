@@ -11,13 +11,14 @@ from config import *
 from utils import *
 from metric import iou_score
 
-def train_model(dataloaders, batch_num, net, criterion, optim, ckpt_dir, wandb, num_epoch):
+def train_model(dataloaders, batch_num, net, criterion, optim, ckpt_dir, wandb, w_config):
     wandb.watch(net, criterion, log='all', log_freq=10)
 
     since = time.time()
     
     best_model_wts = copy.deepcopy(net.state_dict())
     best_iou = 0
+    num_epoch = w_config.epochs
 
     for epoch in range(1, num_epoch+1):
         net.train()  # Train Mode
@@ -74,12 +75,11 @@ def train_model(dataloaders, batch_num, net, criterion, optim, ckpt_dir, wandb, 
                 print_form = '[Validation] | Epoch: {:0>4d} / {:0>4d} | Batch: {:0>4d} / {:0>4d} | Loss: {:.4f} | IoU: {:.4f}'
                 print(print_form.format(epoch, num_epoch, batch_idx, batch_num['val'], val_loss_arr[-1], iou))
 
-
         val_loss_avg = np.mean(val_loss_arr)
         val_iou_avg =  np.mean(val_iou_arr)
         # val_writer.add_scalar(tag='loss', scalar_value=val_loss_avg, global_step=epoch)
         
-        if val_iou_avg < best_iou:
+        if  best_iou < val_iou_avg:
             best_iou = val_iou_avg
             best_model_wts = copy.deepcopy(net.state_dict())    
 
@@ -95,14 +95,24 @@ def train_model(dataloaders, batch_num, net, criterion, optim, ckpt_dir, wandb, 
         time_elapsed // 60, time_elapsed % 60))
     print('Best val IoU: {:4f}'.format(best_iou))
 
+    wandb.log({'Best val IoU': best_iou}, commit=False)
+
     net.load_state_dict(best_model_wts)
-    save_net(ckpt_dir=ckpt_dir, net=net, optim=optim, epoch=epoch, is_best=True, best_iou=best_iou)
+    save_net(ckpt_dir=ckpt_dir, net=net, optim=optim, epoch=epoch, is_best=True, best_iou=best_iou, model_name=w_config.model)
 
 
-def eval_model(test_loader, test_batch_num, net, criterion, optim, ckpt_dir, result_dir, wandb):
+def eval_model(test_loader, test_batch_num, net, criterion, optim, ckpt_dir, wandb, w_config):
     # Load Checkpoint File
     if os.listdir(ckpt_dir):
-        net, optim, _ = load_net(ckpt_dir=ckpt_dir, net=net, optim=optim)
+        net, optim, ckpt_path = load_net(ckpt_dir=ckpt_dir, net=net, optim=optim)
+
+    img_result_dir = os.path.join(INFER_DIR, 'test_' + ckpt_path.split('/')[-1][:-4],  'img')
+    label_result_dir = os.path.join(INFER_DIR, 'test_' + ckpt_path.split('/')[-1][:-4],  'label')
+    output_result_dir = os.path.join(INFER_DIR, 'test_' + ckpt_path.split('/')[-1][:-4],  'output')
+
+    dirs_check(img_result_dir)
+    dirs_check(label_result_dir)
+    dirs_check(output_result_dir)
 
     # Evaluation
     with torch.no_grad():
@@ -129,7 +139,7 @@ def eval_model(test_loader, test_batch_num, net, criterion, optim, ckpt_dir, res
             print_form = '[Test] | Batch: {:0>4d} / {:0>4d} | Loss: {:.4f} | IoU: {:.4f}'
             print(print_form.format(batch_idx, test_batch_num, loss_arr[-1], iou))
 
-            img = to_numpy(denormalization(img, mean=0.5, std=0.5))
+            img = to_numpy(denormalization(img, mean=0.485, std=0.229))
             # 이미지 캐스팅
             img = np.clip(img, 0, 1) 
 
@@ -137,11 +147,11 @@ def eval_model(test_loader, test_batch_num, net, criterion, optim, ckpt_dir, res
             output_t = to_numpy(classify_class(output_t))
             
             for j in range(label.shape[0]):
-                crt_id = int(test_batch_num * (batch_idx - 1) + j)
+                crt_id = int(w_config.batch_size * (batch_idx - 1) + j)
                 
-                plt.imsave(os.path.join(result_dir, f'img_{crt_id:04}.png'), img[j].squeeze(), cmap='gray')
-                plt.imsave(os.path.join(result_dir, f'label_{crt_id:04}.png'), label[j].squeeze(), cmap='gray')
-                plt.imsave(os.path.join(result_dir, f'output_{crt_id:04}.png'), output_t[j].squeeze(), cmap='gray')
+                plt.imsave(os.path.join(img_result_dir, f'img_{crt_id:04}.png'), img[j].squeeze(), cmap='gray')
+                plt.imsave(os.path.join(label_result_dir, f'label_{crt_id:04}.png'), label[j].squeeze(), cmap='gray')
+                plt.imsave(os.path.join(output_result_dir,f'output_{crt_id:04}.png'), output_t[j].squeeze(), cmap='gray')
     
     eval_loss_avg = np.mean(loss_arr)
     eval_iou_avg  = np.mean(iou_arr)
