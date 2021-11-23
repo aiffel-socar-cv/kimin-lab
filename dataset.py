@@ -11,18 +11,17 @@ import albumentations as A
 from albumentations.pytorch import transforms
 
 
-class Dataset(Dataset):
+class DatasetV1(Dataset):
     def __init__(self, imgs_dir, mask_dir, transform=None):
         self.img_dir = imgs_dir
         self.mask_dir = mask_dir
         self.transform = transform
+        self.images = []
+        self.masks = []
 
-        self.images = sorted(glob(os.path.join(imgs_dir, '*.jpg')))
-
-        files = []
-        for ext in ('*.gif', '*.png', '*.jpg'):
-            files.extend(glob(os.path.join(mask_dir, ext)))
-        self.masks = sorted(files)
+        for ext in ('*.jpeg', '*.png', '*.jpg'):
+            self.images.extend(sorted(glob(os.path.join(imgs_dir, ext))))
+            self.masks.extend(sorted(glob(os.path.join(mask_dir, ext))))
 
     def __len__(self):
         return len(self.masks)
@@ -57,9 +56,8 @@ class DatasetV2(Dataset):
 
         images_path, masks_path = [], []
 
-        images_path.extend(sorted(glob(os.path.join(imgs_dir, '*.jpg'))))
-
-        for ext in ('*.png', '*.jpg'):
+        for ext in ('*.jpeg', '*.png', '*.jpg'):
+            images_path.extend(sorted(glob(os.path.join(imgs_dir, ext))))
             masks_path.extend(sorted(glob(os.path.join(mask_dir, ext))))
         
         for i, m  in zip(images_path, masks_path):
@@ -100,7 +98,7 @@ if __name__ == '__main__':
     img_dir = os.path.join(os.getcwd(), "accida_segmentation", 'imgs', 'train')
     mask_dir = os.path.join(os.getcwd(), "accida_segmentation", 'labels', 'train')
 
-    train_dataset = Dataset(img_dir, mask_dir, transform=transform)
+    train_dataset = DatasetV1(img_dir, mask_dir, transform=transform)
     dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=1, num_workers=0)
 
     #For shape test
